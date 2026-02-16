@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Engineering Attack</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #1e293b; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        
+        
+        .iphone { width: 320px; height: 650px; background: url('https://images.unsplash.com/photo-1618423851532-68c139db490a?q=80&w=600&auto=format&fit=crop') center/cover; border-radius: 40px; border: 12px solid #334155; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.5); overflow: hidden; display: flex; flex-direction: column; align-items: center; }
+        
+        
+        .notch { width: 120px; height: 25px; background: #334155; border-bottom-left-radius: 15px; border-bottom-right-radius: 15px; position: absolute; top: 0; z-index: 10; }
+        
+        
+        .time { margin-top: 60px; color: white; font-size: 60px; font-weight: 200; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+        .date { color: white; font-size: 18px; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+
+        
+        .notification { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); width: 85%; padding: 15px; border-radius: 15px; margin-top: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transform: translateY(-20px); opacity: 0; animation: slideDown 0.8s forwards 1s; cursor: pointer; }
+        
+        .notif-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .app-name { font-size: 12px; color: #555; display: flex; align-items: center; gap: 5px; }
+        .icon { background: #34d399; width: 16px; height: 16px; border-radius: 4px; display: inline-block; }
+        .time-ago { font-size: 11px; color: #888; }
+        
+        .sender { font-weight: 600; font-size: 14px; color: #000; margin-bottom: 2px; }
+        .message { font-size: 14px; color: #333; line-height: 1.4; }
+        .link { color: #0284c7; text-decoration: underline; }
+
+        @keyframes slideDown {
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        
+        .nav-arrow {
+            position: absolute;
+            top: 30px;
+            right: 40px;
+            color: #64748b;
+            font-size: 36px;
+            text-decoration: none;
+            transition: color 0.3s ease, transform 0.3s ease;
+            z-index: 100;
+        }
+        .nav-arrow:hover {
+            color: #38bdf8; 
+            transform: translateX(5px); 
+        }
+    </style>
+</head>
+<body>
+
+    <a href="demo.html" class="nav-arrow" title="Proceed to Sentinel-Vault">➔</a>
+
+    <div class="iphone">
+        <div class="notch"></div>
+        <div class="time">10:42</div>
+        <div class="date">Tuesday, October 24</div>
+
+        <div class="notification">
+            <div class="notif-header">
+                <div class="app-name"><span class="icon"></span> Messages</div>
+                <div class="time-ago">now</div>
+            </div>
+            <div class="sender">CHASE BANK</div>
+            <div class="message">
+                URGENT: Suspicious login detected on your account. If this was not you, please call our fraud department immediately at <span class="link">1-800-935-9935</span> to secure your funds.
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

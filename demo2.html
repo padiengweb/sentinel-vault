@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel-Vault | Enterprise JIT Access</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: white; display: flex; height: 100vh; margin: 0; }
+        h2 { text-align: center; margin-top: 0; color: #f8fafc; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px;}
+        .split { flex: 1; padding: 40px; display: flex; flex-direction: column; align-items: center; }
+        .engineer-side { background: #0f172a; border-right: 2px solid #334155; }
+        .admin-side { background: #1e293b; }
+        .device { background: #ffffff; color: #333; width: 380px; padding: 30px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); min-height: 420px; position: relative; border-top: 5px solid #3b82f6;}
+        .device.admin-box { border-top: 5px solid #8b5cf6; }
+        
+        button { background: #3b82f6; color: white; border: none; padding: 12px; width: 100%; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s;}
+        button:hover { background: #2563eb; }
+        .btn-admin { background: #8b5cf6; }
+        .btn-admin:hover { background: #7c3aed; }
+        .btn-danger { background: #ef4444; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-success { background: #22c55e; }
+        .btn-success:hover { background: #16a34a; }
+
+        input, select { width: 100%; padding: 10px; margin-top: 8px; margin-bottom: 12px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-family: monospace;}
+        
+        .status-box { background: #f1f5f9; padding: 15px; border-radius: 4px; margin-top: 20px; font-family: monospace; font-size: 13px; word-wrap: break-word; border-left: 3px solid #cbd5e1;}
+        .secure-alert { background: #dcfce7; color: #166534; border: 1px solid #22c55e; border-left: 4px solid #166534; font-weight: bold;}
+        .danger-alert { background: #fee2e2; color: #991b1b; border: 1px solid #ef4444; border-left: 4px solid #991b1b; font-weight: bold;}
+        
+        .hidden { display: none !important; }
+        .security-prompt { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin-top: 15px; border-radius: 4px; font-size: 14px;}
+        .badge { display: inline-block; padding: 3px 8px; background: #e2e8f0; border-radius: 12px; font-size: 11px; font-weight: bold; color: #475569; margin-bottom: 10px;}
+    </style>
+</head>
+<body>
+
+    <div class="split engineer-side">
+        <h2>🛠️ DevOps Engineer Portal</h2>
+        
+        <div class="device" id="transfer-screen">
+            <span class="badge">AWS Production Environment</span>
+            <h3 style="margin-top: 0;">Request JIT Access</h3>
+            <p style="color: #64748b; font-size: 13px;">Request temporary Least Privilege access to a secure enclave.</p>
+            
+            <label style="font-size: 12px; font-weight: bold;">Target Resource</label>
+            <select id="tx-dest">
+                <option>PROD-DB-CLUSTER-01 (High Risk)</option>
+                <option>PAYMENT-GATEWAY-API (High Risk)</option>
+            </select>
+            
+            <label style="font-size: 12px; font-weight: bold;">Duration (Hours)</label>
+            <input type="number" id="tx-amount" value="2" min="1" max="4">
+            
+            <button onclick="triggerSecurityPrompt()">Initiate JIT Request</button>
+
+            <div id="security-prompt" class="security-prompt hidden">
+                <strong style="color: #b45309;">⚠️ Policy Requirement: Four-Eyes Principle</strong><br>
+                <span style="color: #451a03;">Are you currently on a live call with an IAM Security Admin to authorize this access?</span>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button class="btn-danger" onclick="submitTransaction(true)">Yes, Admin is Present</button>
+                    <button class="btn-success" onclick="submitTransaction(false)">No</button>
+                </div>
+            </div>
+
+            <div class="status-box hidden" id="tx-status"></div>
+        </div>
+
+        <div class="device hidden" id="auth-screen">
+            <span class="badge">Sentinel-Vault Active</span>
+            <h3 style="margin-top: 0;">Admin Verification Required</h3>
+            <p style="font-size: 13px;"><strong>Access Locked.</strong> Enter the Session ID and Code provided by the IAM Admin to verify their identity via AWS Nitro Enclave.</p>
+            
+            <input type="text" id="cust-session-id" placeholder="1. Enter Admin Session ID">
+            <input type="text" id="cust-code-a" placeholder="2. Enter Admin's Code">
+            
+            <button onclick="verifyEmployee()">Verify Admin Identity</button>
+
+            <div class="status-box" id="cust-status">Status: Awaiting Verification...</div>
+        </div>
+    </div>
+
+    <div class="split admin-side">
+        <h2>🛡️ IAM Security Console</h2>
+        <div class="device admin-box">
+            <span class="badge">Admin Privileges Active</span>
+            <h3 style="margin-top: 0;">Sentinel-Vault JIT Arbiter</h3>
+            
+            <button class="btn-admin" onclick="initiateCall()">1. Generate Secure Session</button>
+            <div class="status-box" id="emp-session-display">
+                Session ID: -- <br><br>
+                Provide this Code to Engineer: --
+            </div>
+
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #e2e8f0;">
+
+            <h3 style="margin-top: 0;">Verify Engineer</h3>
+            <p style="font-size: 13px;">Enter the cryptographically signed Code B generated by the Engineer's portal.</p>
+            <input type="text" id="emp-code-b" placeholder="Enter Code B from Engineer">
+            <button class="btn-admin" onclick="verifyHandshake()">2. Authorize JIT Access</button>
+            
+            <div class="status-box" id="emp-status">System Status: Ready to audit via Cribl/Snowflake</div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000/api";
+        let currentSessionId = "";
+
+        function triggerSecurityPrompt() {
+            document.getElementById("security-prompt").classList.remove("hidden");
+        }
+
+        async function submitTransaction(isAdminPresent) {
+            const dest = document.getElementById("tx-dest").value;
+
+            
+            const res = await fetch(`${API_URL}/transaction/request`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    account_number: "ENG-9981",
+                    amount: 0,
+                    destination: dest,
+                    is_employee_instructing: isAdminPresent
+                })
+            });
+            const data = await res.json();
+
+            if (isAdminPresent) {
+                document.getElementById("transfer-screen").classList.add("hidden");
+                document.getElementById("auth-screen").classList.remove("hidden");
+            } else {
+                const statusBox = document.getElementById("tx-status");
+                statusBox.classList.remove("hidden");
+                statusBox.classList.add("danger-alert");
+                statusBox.innerText = "ACCESS DENIED: High-risk target requires live Admin authorization.";
+                document.getElementById("security-prompt").classList.add("hidden");
+            }
+        }
+
+        async function initiateCall() {
+            const res = await fetch(`${API_URL}/initiate-call`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ account_number: "ENG-9981" })
+            });
+            const data = await res.json();
+            currentSessionId = data.session_id;
+            
+            document.getElementById("emp-session-display").innerHTML = 
+                `Session ID: <strong>${currentSessionId}</strong> <br><br>
+                 Provide this Code to Engineer: <strong style="color:#8b5cf6;">${data.employee_code_a}</strong>`;
+            document.getElementById("emp-status").innerText = "Awaiting engineer verification... (Logging to NiFi)";
+        }
+
+        async function verifyEmployee() {
+            const sessionId = document.getElementById("cust-session-id").value;
+            const employeeCode = document.getElementById("cust-code-a").value;
+            
+            const res = await fetch(`${API_URL}/customer/verify-employee`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ session_id: sessionId, employee_code_a: employeeCode })
+            });
+            const data = await res.json();
+            
+            const statusBox = document.getElementById("cust-status");
+            if(res.ok) {
+                statusBox.classList.remove("danger-alert");
+                statusBox.classList.add("secure-alert");
+                statusBox.innerHTML = 
+                    `<strong>Admin Identity Verified!</strong><br><br>
+                     Provide this back to Admin:<br>
+                     <strong style="font-size: 18px; color: #8b5cf6;">${data.customer_code_b}</strong>`;
+            } else {
+                statusBox.classList.remove("secure-alert");
+                statusBox.classList.add("danger-alert");
+                statusBox.innerText = "CRITICAL ALERT: " + data.detail + " (Event logged to Snowflake)";
+            }
+        }
+
+        async function verifyHandshake() {
+            const codeB = document.getElementById("emp-code-b").value;
+            const res = await fetch(`${API_URL}/employee/verify-handshake`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ session_id: currentSessionId, customer_code_b: codeB })
+            });
+            const data = await res.json();
+            
+            const statusBox = document.getElementById("emp-status");
+            if(res.ok) {
+                statusBox.innerText = "JIT ACCESS GRANTED. Enclave unlocked for 2 hours.";
+                statusBox.classList.add("secure-alert");
+            } else {
+                statusBox.innerText = "AUTHORIZATION FAILED: " + data.detail + " (Event logged to Snowflake)";
+                statusBox.classList.remove("secure-alert");
+                statusBox.classList.add("danger-alert");
+            }
+        }
+    </script>
+</body>
+</html>
