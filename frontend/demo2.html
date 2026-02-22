@@ -106,6 +106,43 @@
     <script>
         const API_URL = "http://127.0.0.1:8000/api";
         let currentSessionId = "";
+        let cryptographicNonce = "";
+        let keyPair = null;
+
+        
+        
+        
+        
+        
+        async function initCrypto() {
+            keyPair = await window.crypto.subtle.generateKey(
+                { name: "ECDSA", namedCurve: "P-256" },
+                true,
+                ["sign", "verify"]
+            );
+            console.log("System Ready: Local ECDSA Key Pair Generated.");
+        }
+        initCrypto();
+
+        
+        function bufferToBase64Url(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        
+        async function exportPublicKeyPEM(key) {
+            const exported = await window.crypto.subtle.exportKey("spki", key);
+            const exportedAsString = String.fromCharCode.apply(null, new Uint8Array(exported));
+            const exportedAsBase64 = window.btoa(exportedAsString);
+            return `-----BEGIN PUBLIC KEY-----\n${exportedAsBase64.match(/.{1,64}/g).join('\n')}\n-----END PUBLIC KEY-----`;
+        }
+
+        
 
         function triggerSecurityPrompt() {
             document.getElementById("security-prompt").classList.remove("hidden");
@@ -114,7 +151,6 @@
         async function submitTransaction(isAdminPresent) {
             const dest = document.getElementById("tx-dest").value;
 
-            
             const res = await fetch(`${API_URL}/transaction/request`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -125,7 +161,6 @@
                     is_employee_instructing: isAdminPresent
                 })
             });
-            const data = await res.json();
 
             if (isAdminPresent) {
                 document.getElementById("transfer-screen").classList.add("hidden");
@@ -167,6 +202,9 @@
             
             const statusBox = document.getElementById("cust-status");
             if(res.ok) {
+                
+                cryptographicNonce = data.cryptographic_nonce;
+
                 statusBox.classList.remove("danger-alert");
                 statusBox.classList.add("secure-alert");
                 statusBox.innerHTML = 
@@ -176,25 +214,47 @@
             } else {
                 statusBox.classList.remove("secure-alert");
                 statusBox.classList.add("danger-alert");
-                statusBox.innerText = "CRITICAL ALERT: " + data.detail + " (Event logged to Snowflake)";
+                statusBox.innerText = "CRITICAL ALERT: FAKE ADMIN DETECTED (Event logged to Snowflake)";
             }
         }
 
         async function verifyHandshake() {
             const codeB = document.getElementById("emp-code-b").value;
+
+            
+            const encoder = new TextEncoder();
+            const nonceData = encoder.encode(cryptographicNonce);
+
+            
+            const signatureBuffer = await window.crypto.subtle.sign(
+                { name: "ECDSA", hash: { name: "SHA-256" } },
+                keyPair.privateKey,
+                nonceData
+            );
+
+            
+            const signatureB64 = bufferToBase64Url(signatureBuffer);
+            const publicKeyPem = await exportPublicKeyPEM(keyPair.publicKey);
+
+            
             const res = await fetch(`${API_URL}/employee/verify-handshake`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ session_id: currentSessionId, customer_code_b: codeB })
+                body: JSON.stringify({ 
+                    session_id: currentSessionId, 
+                    customer_code_b: codeB,
+                    public_key_pem: publicKeyPem,
+                    signature: signatureB64
+                })
             });
             const data = await res.json();
             
             const statusBox = document.getElementById("emp-status");
             if(res.ok) {
-                statusBox.innerText = "JIT ACCESS GRANTED. Enclave unlocked for 2 hours.";
+                statusBox.innerText = "JIT ACCESS GRANTED. Enclave unlocked via Cryptographic Signature.";
                 statusBox.classList.add("secure-alert");
             } else {
-                statusBox.innerText = "AUTHORIZATION FAILED: " + data.detail + " (Event logged to Snowflake)";
+                statusBox.innerText = "AUTHORIZATION FAILED: Cryptographic Mismatch (Event logged to Snowflake)";
                 statusBox.classList.remove("secure-alert");
                 statusBox.classList.add("danger-alert");
             }
